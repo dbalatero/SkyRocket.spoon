@@ -17,6 +17,16 @@ local dragTypes = {
   resize = 2,
 }
 
+local function tableToMap(table)
+  local map = {}
+
+  for _, value in pairs(table) do
+    map[value] = true
+  end
+
+  return map
+end
+
 local function createResizeCanvas()
   local canvas = hs.canvas.new{}
 
@@ -57,6 +67,7 @@ function SkyRocket:new(options)
   options = options or {}
 
   local resizer = {
+    disabledApps = tableToMap(options.disabledApps or {}),
     dragging = false,
     dragType = nil,
     moveModifiers = options.moveModifiers or {'cmd', 'shift'},
@@ -169,8 +180,14 @@ function SkyRocket:handleClick()
     local isResizing = flags:containExactly(self.resizeModifiers)
 
     if isMoving or isResizing then
+      local currentWindow = getWindowUnderMouse()
+
+      if self.disabledApps[currentWindow:application():name()] then
+        return nil
+      end
+
       self.dragging = true
-      self.targetWindow = getWindowUnderMouse()
+      self.targetWindow = currentWindow
 
       if isMoving then
         self.dragType = dragTypes.move

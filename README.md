@@ -47,6 +47,18 @@ To move a window, hold your `moveModifiers` down, then click and drag a window.
 
 To resize a window, hold your `resizeModifiers` down, then click and drag a window.
 
+### Disabling move/resize for apps
+
+You can disable move/resize for any app by adding it to the `disabledApps` option:
+
+```lua
+sky = SkyRocket:new({
+  -- For example, if you run your terminal in full-screen mode you might not
+  -- to accidentally resize it:
+  disabledApps = {"Alacritty"},
+})
+```
+
 ## Thanks
 
 I took initial inspiration from [this gist](https://gist.github.com/kizzx2/e542fa74b80b7563045a) by @kizzx2, and heavily modified it to be packaged up in this Spoon. I also came up with a different technique for resizing to address the low frame-rate when attempting to resize in real time.
