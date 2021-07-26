@@ -14,6 +14,8 @@ I created this to fill the void after Zooom/2 was abandoned by the original deve
 
 ## Installation
 
+This tool requires [Hammerspoon](https://www.hammerspoon.org/) to be installed and running.
+
 The easiest thing to do is paste this in:
 
 ```
