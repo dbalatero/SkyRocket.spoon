@@ -1,6 +1,12 @@
 # 🌄 🚀 SkyRocket.spoon
 
-A free clone of Coderage Software's Zooom/2 tool, written for Hammerspoon in Lua.
+This Hammerspoon tool lets you **resize** and **move** windows by clicking + dragging them while holding down modifier keys.
+
+This attempts to emulate such things as:
+
+* BetterTouchTool resize/move functions
+* Coderage Software's abandoned Zooom/2 software
+* Linux desktop move/resize hot keys
 
 ## Installation
 
