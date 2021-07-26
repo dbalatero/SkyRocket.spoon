@@ -8,6 +8,8 @@ This attempts to emulate such things as:
 * Coderage Software's abandoned Zooom/2 software
 * Linux desktop move/resize hot keys
 
+<img alt="SkyRocket move and resize demo" src="https://github.com/dbalatero/SkyRocket.spoon/raw/master/doc/demo.gif" />
+
 ## Installation
 
 The easiest thing to do is paste this in:
