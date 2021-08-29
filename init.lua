@@ -9,7 +9,7 @@ SkyRocket.author = "David Balatero <d@balatero.com>"
 SkyRocket.homepage = "https://github.com/dbalatero/SkyRocket.spoon"
 SkyRocket.license = "MIT"
 SkyRocket.name = "SkyRocket"
-SkyRocket.version = "1.0.1"
+SkyRocket.version = "1.0.2"
 SkyRocket.spoonPath = scriptPath()
 
 local dragTypes = {
