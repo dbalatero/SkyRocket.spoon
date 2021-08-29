@@ -71,7 +71,7 @@ function SkyRocket:new(options)
     dragging = false,
     dragType = nil,
     moveModifiers = options.moveModifiers or {'cmd', 'shift'},
-    resizeCanvas = createResizeCanvas(),
+    windowCanvas = createResizeCanvas(),
     resizeModifiers = options.resizeModifiers or {'ctrl', 'shift'},
     targetWindow = nil,
   }
@@ -103,7 +103,7 @@ function SkyRocket:stop()
   self.dragging = false
   self.dragType = nil
 
-  self.resizeCanvas:hide()
+  self.windowCanvas:hide()
   self.cancelHandler:stop()
   self.dragHandler:stop()
   self.clickHandler:start()
@@ -125,12 +125,18 @@ function SkyRocket:handleDrag()
     local dy = event:getProperty(hs.eventtap.event.properties.mouseEventDeltaY)
 
     if self:isMoving() then
-      self.targetWindow:move({dx, dy}, nil, false, 0)
+      local current = self.windowCanvas:topLeft()
+
+      self.windowCanvas:topLeft({
+        x = current.x + dx,
+        y = current.y + dy,
+      })
+
       return true
     elseif self:isResizing() then
-      local currentSize = self.resizeCanvas:size()
+      local currentSize = self.windowCanvas:size()
 
-      self.resizeCanvas:size({
+      self.windowCanvas:size({
         w = currentSize.w + dx,
         h = currentSize.h + dy
       })
@@ -148,6 +154,8 @@ function SkyRocket:handleCancel()
 
     if self:isResizing() then
       self:resizeWindowToCanvas()
+    else
+      self:moveWindowToCanvas()
     end
 
     self:stop()
@@ -158,16 +166,33 @@ function SkyRocket:resizeCanvasToWindow()
   local position = self.targetWindow:topLeft()
   local size = self.targetWindow:size()
 
-  self.resizeCanvas:topLeft({ x = position.x, y = position.y })
-  self.resizeCanvas:size({ w = size.w, h = size.h })
+  self.windowCanvas:topLeft({ x = position.x, y = position.y })
+  self.windowCanvas:size({ w = size.w, h = size.h })
 end
 
 function SkyRocket:resizeWindowToCanvas()
   if not self.targetWindow then return end
-  if not self.resizeCanvas then return end
+  if not self.windowCanvas then return end
 
-  local size = self.resizeCanvas:size()
+  local size = self.windowCanvas:size()
   self.targetWindow:setSize(size.w, size.h)
+end
+
+function SkyRocket:moveWindowToCanvas()
+  if not self.targetWindow then return end
+  if not self.windowCanvas then return end
+
+  local frame = self.windowCanvas:frame()
+  local point = self.windowCanvas:topLeft()
+
+  local moveTo = {
+    x = point.x,
+    y = point.y,
+    w = frame.w,
+    h = frame.h,
+  }
+
+  self.targetWindow:move(hs.geometry.new(moveTo), nil, false, 0)
 end
 
 function SkyRocket:handleClick()
@@ -193,10 +218,10 @@ function SkyRocket:handleClick()
         self.dragType = dragTypes.move
       else
         self.dragType = dragTypes.resize
-
-        self:resizeCanvasToWindow()
-        self.resizeCanvas:show()
       end
+
+      self:resizeCanvasToWindow()
+      self.windowCanvas:show()
 
       self.cancelHandler:start()
       self.dragHandler:start()
