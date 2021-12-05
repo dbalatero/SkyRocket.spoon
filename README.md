@@ -106,3 +106,5 @@ sky = SkyRocket:new({
 ## Thanks
 
 I took initial inspiration from [this gist](https://gist.github.com/kizzx2/e542fa74b80b7563045a) by @kizzx2, and heavily modified it to be packaged up in this Spoon. I also came up with a different technique for resizing to address the low frame-rate when attempting to resize in real time.
+
+Fancy Zones are inspired by [Microsoft's FancyZones](https://docs.microsoft.com/en-gb/windows/powertoys/fancyzones) and implemented by [@snooze6](https://github.com/snooze6)
