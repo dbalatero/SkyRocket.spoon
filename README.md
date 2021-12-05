@@ -67,7 +67,7 @@ Fancy zones module is inspired by [Microsoft's FancyZones](https://docs.microsof
 
 To configure your fancy zones you have to specify it them in the configuration using the ratios of the screen.
 
-<img alt="Zones example" src="./raw/master/doc/zones.png" />
+<img alt="Zones example" src="./doc/zones.png" />
 
 The 0,0 point starts in the top-left corner. In order to obtain the result shown in the image you need 9 zones:
 
@@ -89,7 +89,7 @@ Once the zones are configured you can press the modifier key and drag the window
 
 In the following gif you can see it in movement
 
-<img alt="Fancy Zones clone demo" src="./raw/master/doc/zones.gif" />
+<img alt="Fancy Zones clone demo" src="./doc/zones.gif" />
 
 ### Disabling move/resize for apps
 
