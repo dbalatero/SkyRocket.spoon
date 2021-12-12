@@ -27,7 +27,7 @@ local function tableToMap(table)
   return map
 end
 
-local function createResizeCanvas()
+local function createResizeCanvas(alpha)
   local canvas = hs.canvas.new{}
 
   canvas:insertElement(
@@ -35,7 +35,7 @@ local function createResizeCanvas()
       id = 'opaque_layer',
       action = 'fill',
       type = 'rectangle',
-      fillColor = { red = 0, green = 0, blue = 0, alpha = 0.3 },
+      fillColor = { red = 0, green = 0, blue = 0, alpha = alpha },
       roundedRectRadii = { xRadius = 5.0, yRadius = 5.0 },
     },
     1
@@ -59,6 +59,7 @@ end
 
 -- Usage:
 --   resizer = SkyRocket:new({
+--     opacity = 0.3,
 --     moveModifiers = {'cmd', 'shift'},
 --     resizeModifiers = {'ctrl', 'shift'}
 --   })
@@ -71,7 +72,7 @@ function SkyRocket:new(options)
     dragging = false,
     dragType = nil,
     moveModifiers = options.moveModifiers or {'cmd', 'shift'},
-    windowCanvas = createResizeCanvas(),
+    windowCanvas = createResizeCanvas(options.opacity or 0.3),
     resizeModifiers = options.resizeModifiers or {'ctrl', 'shift'},
     targetWindow = nil,
   }

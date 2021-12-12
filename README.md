@@ -31,6 +31,9 @@ Once you've installed it, add this to your `~/.hammerspoon/init.lua` file:
 local SkyRocket = hs.loadSpoon("SkyRocket")
 
 sky = SkyRocket:new({
+  -- Opacity of resize canvas
+  opacity = 0.3,
+
   -- Which modifiers to hold to move a window?
   moveModifiers = {'cmd', 'shift'},
 
