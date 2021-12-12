@@ -9,12 +9,13 @@ SkyRocket.author = "David Balatero <d@balatero.com>"
 SkyRocket.homepage = "https://github.com/dbalatero/SkyRocket.spoon"
 SkyRocket.license = "MIT"
 SkyRocket.name = "SkyRocket"
-SkyRocket.version = "1.0.2"
+SkyRocket.version = "1.0.3"
 SkyRocket.spoonPath = scriptPath()
 
 local dragTypes = {
   move = 1,
   resize = 2,
+  fancy = 3,
 }
 
 local function tableToMap(table)
@@ -61,6 +62,11 @@ end
 --   resizer = SkyRocket:new({
 --     moveModifiers = {'cmd', 'shift'},
 --     resizeModifiers = {'ctrl', 'shift'}
+--     fancyZoneModifier = {'shift'},
+--     zones = {
+--        {w=0.50,h=0.50,x=0.0 ,y=0},
+--        {w=0.50,h=0.50,x=0.0 ,y=50},
+--     }
 --   })
 --
 function SkyRocket:new(options)
@@ -74,6 +80,18 @@ function SkyRocket:new(options)
     windowCanvas = createResizeCanvas(),
     resizeModifiers = options.resizeModifiers or {'ctrl', 'shift'},
     targetWindow = nil,
+
+    fancyZoneModifier = options.fancyZoneModifier or {'shift'},
+    zones = options.zones or {
+      {w=0.50,h=0.50,x=0.0 ,y=0},
+      {w=0.50,h=0.50,x=0.0,y=50},
+      {w=0.50,h=0.50,x=0.50, y=0},
+      {w=0.50,h=0.50,x=0.50,y=50},
+    },
+    fancyPosition=hs.geometry.point(0,0),
+    showcanvas = false,
+    screen = nil,
+    menuheight = 22,
   }
 
   setmetatable(resizer, self)
@@ -117,9 +135,19 @@ function SkyRocket:isMoving()
   return self.dragType == dragTypes.move
 end
 
+function SkyRocket:isFancy()
+  return self.dragType == dragTypes.fancy
+end
+
 function SkyRocket:handleDrag()
   return function(event)
     if not self.dragging then return nil end
+
+    if not self.showcanvas then
+      self:resizeCanvasToWindow()
+      self.windowCanvas:show()
+      self.showcanvas = true
+    end
 
     local dx = event:getProperty(hs.eventtap.event.properties.mouseEventDeltaX)
     local dy = event:getProperty(hs.eventtap.event.properties.mouseEventDeltaY)
@@ -133,7 +161,9 @@ function SkyRocket:handleDrag()
       })
 
       return true
-    elseif self:isResizing() then
+    end
+
+    if self:isResizing() then
       local currentSize = self.windowCanvas:size()
 
       self.windowCanvas:size({
@@ -142,9 +172,54 @@ function SkyRocket:handleDrag()
       })
 
       return true
-    else
-      return nil
     end
+
+    if self:isFancy() then
+      self.fancyPosition.x = self.fancyPosition.x + dx
+      self.fancyPosition.y = self.fancyPosition.y + dy
+
+      -- Avoid the current position to be off-screen
+      if self.fancyPosition.x < 0 then 
+        self.fancyPosition.x = 0 
+      elseif self.fancyPosition.x > self.screen.w then 
+          self.fancyPosition.x = self.screen.w 
+      end
+      if self.fancyPosition.y < 0 then 
+        self.fancyPosition.y = 0
+      elseif self.fancyPosition.y > self.screen.h then 
+          self.fancyPosition.y = self.screen.h 
+      end
+
+      -- Transform position from absolute to ratio
+      local position = hs.geometry.point(0,0)
+      position.x = self.fancyPosition.x / self.screen.w
+      position.y = self.fancyPosition.y / self.screen.h
+
+      -- For each zone if the current position is in the zone we render the canvas and exit the loop
+      for k,v in pairs(self.zones) do            
+          if 
+              (position.x > v.x) and 
+              (position.x < v.x + v.w) and 
+              (position.y > v.y) and 
+              (position.y < v.y + v.h) 
+          then
+              self.windowCanvas:topLeft({
+                  x = v.x * self.screen.w,
+                  y = v.y * self.screen.h + self.menuheight
+              })
+              self.windowCanvas:size({
+                  w = v.w * self.screen.w,
+                  h = v.h * self.screen.h
+              })
+
+              return true
+          end
+      end
+
+      return true
+    end
+
+    return nil
   end
 end
 
@@ -154,10 +229,14 @@ function SkyRocket:handleCancel()
 
     if self:isResizing() then
       self:resizeWindowToCanvas()
-    else
+    elseif self:isMoving() then
       self:moveWindowToCanvas()
+    elseif self:isFancy() then
+      self:moveWindowToCanvas()
+      self:resizeWindowToCanvas()
     end
 
+    self.showcanvas = false
     self:stop()
   end
 end
@@ -203,31 +282,33 @@ function SkyRocket:handleClick()
 
     local isMoving = flags:containExactly(self.moveModifiers)
     local isResizing = flags:containExactly(self.resizeModifiers)
+    local isFancy = flags:containExactly(self.fancyZoneModifier)
 
-    if isMoving or isResizing then
+    if isMoving or isResizing or isFancy then
       local currentWindow = getWindowUnderMouse()
 
-      if self.disabledApps[currentWindow:application():name()] then
+      if currentWindow==nil or self.disabledApps[currentWindow:application():name()] then
         return nil
       end
 
       self.dragging = true
       self.targetWindow = currentWindow
 
-      if isMoving then
+      if isMoving then 
         self.dragType = dragTypes.move
-      else
+      elseif isResizing then 
         self.dragType = dragTypes.resize
+      elseif isFancy then 
+          self.dragType = dragTypes.fancy
+          self.fancyPosition = hs.mouse.absolutePosition()
+          self.screen = getWindowUnderMouse():screen():currentMode()
+          self.screen.h = self.screen.h - self.menuheight
       end
-
-      self:resizeCanvasToWindow()
-      self.windowCanvas:show()
 
       self.cancelHandler:start()
       self.dragHandler:start()
       self.clickHandler:stop()
 
-      -- Prevent selection
       return true
     else
       return nil
