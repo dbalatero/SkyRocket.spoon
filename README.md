@@ -85,7 +85,7 @@ The 0,0 point starts in the top-left corner. In order to obtain the result shown
   },
 ```
 
-Once the zones are configured you can press the modifier key and drag the window to the zones to snip it.
+Once the zones are configured you can press the modifier key and drag the window to the zones to resize the window to the zone.
 
 In the following gif you can see it in movement
 

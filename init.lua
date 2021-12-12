@@ -177,23 +177,40 @@ function SkyRocket:handleDrag()
     if self:isFancy() then
       self.fancyPosition.x = self.fancyPosition.x + dx
       self.fancyPosition.y = self.fancyPosition.y + dy
-      if self.fancyPosition.x < 0 then self.fancyPosition.x = 0 else if self.fancyPosition.x > self.screen.w then self.fancyPosition.x = self.screen.w end end
-      if self.fancyPosition.y < 0 then self.fancyPosition.y = 0 else if self.fancyPosition.y > self.screen.h then self.fancyPosition.y = self.screen.h end end
 
+      -- Avoid the current position to be off-screen
+      if self.fancyPosition.x < 0 then 
+        self.fancyPosition.x = 0 
+      elseif self.fancyPosition.x > self.screen.w then 
+          self.fancyPosition.x = self.screen.w 
+      end
+      if self.fancyPosition.y < 0 then 
+        self.fancyPosition.y = 0
+      elseif self.fancyPosition.y > self.screen.h then 
+          self.fancyPosition.y = self.screen.h 
+      end
+
+      -- Transform position from absolute to ratio
+      local position = hs.geometry.point(0,0)
+      position.x = self.fancyPosition.x / self.screen.w
+      position.y = self.fancyPosition.y / self.screen.h
+
+      -- For each zone if the current position is in the zone we render the canvas and exit the loop
+      -- As fancyzones are in ratios we should trandform them to absolute positions
       for k,v in pairs(self.zones) do            
           if 
-              (self.fancyPosition.x > v.x*self.screen.w) and 
-              (self.fancyPosition.x < v.x*self.screen.w+v.w*self.screen.w) and 
-              (self.fancyPosition.y > v.y*self.screen.h) and 
-              (self.fancyPosition.y < v.y*self.screen.h+v.h*self.screen.h) 
+              (self.fancyPosition.x > v.x * self.screen.w) and 
+              (self.fancyPosition.x < v.x * self.screen.w + v.w * self.screen.w) and 
+              (self.fancyPosition.y > v.y * self.screen.h) and 
+              (self.fancyPosition.y < v.y * self.screen.h+v.h * self.screen.h) 
           then
               self.windowCanvas:topLeft({
-                  x = v.x*self.screen.w,
-                  y = v.y*self.screen.h + self.menuheight
+                  x = v.x * self.screen.w,
+                  y = v.y * self.screen.h + self.menuheight
               })
               self.windowCanvas:size({
-                  w = v.w*self.screen.w,
-                  h = v.h*self.screen.h
+                  w = v.w * self.screen.w,
+                  h = v.h * self.screen.h
               })
 
               return true
@@ -213,17 +230,14 @@ function SkyRocket:handleCancel()
 
     if self:isResizing() then
       self:resizeWindowToCanvas()
-    end
-    if self:isMoving() then
+    elseif self:isMoving() then
       self:moveWindowToCanvas()
-    end
-    if self:isFancy() then
+    elseif self:isFancy() then
       self:moveWindowToCanvas()
       self:resizeWindowToCanvas()
     end
 
     self.showcanvas = false
-
     self:stop()
   end
 end
@@ -269,21 +283,23 @@ function SkyRocket:handleClick()
 
     local isMoving = flags:containExactly(self.moveModifiers)
     local isResizing = flags:containExactly(self.resizeModifiers)
-    local isSkyRocket = flags:containExactly(self.fancyZoneModifier)
+    local isFancy = flags:containExactly(self.fancyZoneModifier)
 
-    if isMoving or isResizing or isSkyRocket then
+    if isMoving or isResizing or isFancy then
       local currentWindow = getWindowUnderMouse()
 
-      if self.disabledApps[currentWindow:application():name()] then
+      if currentWindow==nil or self.disabledApps[currentWindow:application():name()] then
         return nil
       end
 
       self.dragging = true
       self.targetWindow = currentWindow
 
-      if isMoving then self.dragType = dragTypes.move end
-      if isResizing then self.dragType = dragTypes.resize end
-      if isSkyRocket then 
+      if isMoving then 
+        self.dragType = dragTypes.move
+      elseif isResizing then 
+        self.dragType = dragTypes.resize
+      elseif isFancy then 
           self.dragType = dragTypes.fancy
           self.fancyPosition = hs.mouse.absolutePosition()
           self.screen = getWindowUnderMouse():screen():currentMode()
@@ -302,4 +318,3 @@ function SkyRocket:handleClick()
 end
 
 return SkyRocket
-
