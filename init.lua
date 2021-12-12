@@ -64,8 +64,8 @@ end
 --     resizeModifiers = {'ctrl', 'shift'}
 --     fancyZoneModifier = {'shift'},
 --     zones = {
---        {w='0.50',h='0.50',x='0.0' ,y='0'},
---        {w='0.50',h='0.50',x='0.0' ,y='50'},
+--        {w=0.50,h=0.50,x=0.0 ,y=0},
+--        {w=0.50,h=0.50,x=0.0 ,y=50},
 --     }
 --   })
 --
@@ -83,10 +83,10 @@ function SkyRocket:new(options)
 
     fancyZoneModifier = options.fancyZoneModifier or {'shift'},
     zones = options.zones or {
-      {w='0.50',h='0.50',x='0.0' ,y='0'},
-      {w='0.50',h='0.50',x='0.0',y='50'},
-      {w='0.50',h='0.50',x='0.50', y='0'},
-      {w='0.50',h='0.50',x='0.50',y='50'},
+      {w=0.50,h=0.50,x=0.0 ,y=0},
+      {w=0.50,h=0.50,x=0.0,y=50},
+      {w=0.50,h=0.50,x=0.50, y=0},
+      {w=0.50,h=0.50,x=0.50,y=50},
     },
     fancyPosition=hs.geometry.point(0,0),
     showcanvas = false,
@@ -196,13 +196,12 @@ function SkyRocket:handleDrag()
       position.y = self.fancyPosition.y / self.screen.h
 
       -- For each zone if the current position is in the zone we render the canvas and exit the loop
-      -- As fancyzones are in ratios we should trandform them to absolute positions
       for k,v in pairs(self.zones) do            
           if 
-              (self.fancyPosition.x > v.x * self.screen.w) and 
-              (self.fancyPosition.x < v.x * self.screen.w + v.w * self.screen.w) and 
-              (self.fancyPosition.y > v.y * self.screen.h) and 
-              (self.fancyPosition.y < v.y * self.screen.h+v.h * self.screen.h) 
+              (position.x > v.x) and 
+              (position.x < v.x + v.w) and 
+              (position.y > v.y) and 
+              (position.y < v.y + v.h) 
           then
               self.windowCanvas:topLeft({
                   x = v.x * self.screen.w,
