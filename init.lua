@@ -27,7 +27,7 @@ local function tableToMap(table)
   return map
 end
 
-local function createResizeCanvas()
+local function createResizeCanvas(alpha)
   local canvas = hs.canvas.new{}
 
   canvas:insertElement(
@@ -35,7 +35,7 @@ local function createResizeCanvas()
       id = 'opaque_layer',
       action = 'fill',
       type = 'rectangle',
-      fillColor = { red = 0, green = 0, blue = 0, alpha = 0.3 },
+      fillColor = { red = 0, green = 0, blue = 0, alpha = alpha },
       roundedRectRadii = { xRadius = 5.0, yRadius = 5.0 },
     },
     1
@@ -59,10 +59,23 @@ end
 
 -- Usage:
 --   resizer = SkyRocket:new({
+--     opacity = 0.3,
 --     moveModifiers = {'cmd', 'shift'},
+--     moveMouseButton = 'left',
 --     resizeModifiers = {'ctrl', 'shift'}
+--     resizeMouseButton = 'left',
 --   })
 --
+local function buttonNameToEventType(name, optionName)
+  if name == 'left' then
+    return hs.eventtap.event.types.leftMouseDown
+  end
+  if name == 'right' then
+    return hs.eventtap.event.types.rightMouseDown
+  end
+  error(optionName .. ': only "left" and "right" mouse button supported, got ' .. name)
+end
+
 function SkyRocket:new(options)
   options = options or {}
 
@@ -70,8 +83,10 @@ function SkyRocket:new(options)
     disabledApps = tableToMap(options.disabledApps or {}),
     dragging = false,
     dragType = nil,
+    moveStartMouseEvent = buttonNameToEventType(options.moveMouseButton or 'left', 'moveMouseButton'),
     moveModifiers = options.moveModifiers or {'cmd', 'shift'},
-    windowCanvas = createResizeCanvas(),
+    windowCanvas = createResizeCanvas(options.opacity or 0.3),
+    resizeStartMouseEvent = buttonNameToEventType(options.resizeMouseButton or 'left', 'resizeMouseButton'),
     resizeModifiers = options.resizeModifiers or {'ctrl', 'shift'},
     targetWindow = nil,
   }
@@ -80,17 +95,26 @@ function SkyRocket:new(options)
   self.__index = self
 
   resizer.clickHandler = hs.eventtap.new(
-    { hs.eventtap.event.types.leftMouseDown },
+    {
+      hs.eventtap.event.types.leftMouseDown,
+      hs.eventtap.event.types.rightMouseDown,
+    },
     resizer:handleClick()
   )
 
   resizer.cancelHandler = hs.eventtap.new(
-    { hs.eventtap.event.types.leftMouseUp },
+    {
+      hs.eventtap.event.types.leftMouseUp,
+      hs.eventtap.event.types.rightMouseUp,
+    },
     resizer:handleCancel()
   )
 
   resizer.dragHandler = hs.eventtap.new(
-    { hs.eventtap.event.types.leftMouseDragged },
+    {
+      hs.eventtap.event.types.leftMouseDragged,
+      hs.eventtap.event.types.rightMouseDragged,
+    },
     resizer:handleDrag()
   )
 
@@ -200,9 +224,10 @@ function SkyRocket:handleClick()
     if self.dragging then return true end
 
     local flags = event:getFlags()
+    local eventType = event:getType()
 
-    local isMoving = flags:containExactly(self.moveModifiers)
-    local isResizing = flags:containExactly(self.resizeModifiers)
+    local isMoving = eventType == self.moveStartMouseEvent and flags:containExactly(self.moveModifiers)
+    local isResizing = eventType == self.resizeStartMouseEvent and flags:containExactly(self.resizeModifiers)
 
     if isMoving or isResizing then
       local currentWindow = getWindowUnderMouse()
