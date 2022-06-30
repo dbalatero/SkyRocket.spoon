@@ -81,14 +81,19 @@ function SkyRocket:new(options)
 
   local resizer = {
     disabledApps = tableToMap(options.disabledApps or {}),
-    dragging = false,
-    dragType = nil,
     moveStartMouseEvent = buttonNameToEventType(options.moveMouseButton or 'left', 'moveMouseButton'),
     moveModifiers = options.moveModifiers or {'cmd', 'shift'},
     windowCanvas = createResizeCanvas(options.opacity or 0.3),
     resizeStartMouseEvent = buttonNameToEventType(options.resizeMouseButton or 'left', 'resizeMouseButton'),
     resizeModifiers = options.resizeModifiers or {'ctrl', 'shift'},
     targetWindow = nil,
+
+    canDrag = false,
+    dragging = false,
+    dragType = nil,
+
+    enableWithoutClick = options.enableWithoutClick or false,
+    mouseActivationThreshold = options.mouseActivationThreshold or 15,
   }
 
   setmetatable(resizer, self)
@@ -100,6 +105,13 @@ function SkyRocket:new(options)
       hs.eventtap.event.types.rightMouseDown,
     },
     resizer:handleClick()
+  )
+
+  resizer.flagsHandler = hs.eventtap.new(
+    {
+      hs.eventtap.event.types.flagsChanged,
+    },
+    resizer:handleFlags()
   )
 
   resizer.cancelHandler = hs.eventtap.new(
@@ -118,18 +130,28 @@ function SkyRocket:new(options)
     resizer:handleDrag()
   )
 
+  resizer.mouseMoveHandler = hs.eventtap.new(
+    {
+      hs.eventtap.event.types.mouseMoved,
+    },
+    resizer:handleMouseMoved()
+  )
+
   resizer.clickHandler:start()
+  resizer.flagsHandler:start()
 
   return resizer
 end
 
 function SkyRocket:stop()
+  self.canDrag = false
   self.dragging = false
   self.dragType = nil
 
   self.windowCanvas:hide()
   self.cancelHandler:stop()
   self.dragHandler:stop()
+  self.mouseMoveHandler:stop()
   self.clickHandler:start()
 end
 
@@ -139,6 +161,24 @@ end
 
 function SkyRocket:isMoving()
   return self.dragType == dragTypes.move
+end
+
+function SkyRocket:cancel()
+  if not self.dragging then return end
+
+  if self:isResizing() then
+    self:resizeWindowToCanvas()
+  else
+    self:moveWindowToCanvas()
+  end
+
+  self:stop()
+end
+
+function SkyRocket:handleCancel()
+  return function()
+    self:cancel()
+  end
 end
 
 function SkyRocket:handleDrag()
@@ -172,17 +212,69 @@ function SkyRocket:handleDrag()
   end
 end
 
-function SkyRocket:handleCancel()
-  return function()
-    if not self.dragging then return end
+function SkyRocket:handleMouseMoved()
+  return function(event)
+    if not self.enableWithoutClick then return nil end
+    if not self.canDrag then return nil end
 
-    if self:isResizing() then
-      self:resizeWindowToCanvas()
+    local dx = event:getProperty(hs.eventtap.event.properties.mouseEventDeltaX)
+    local dy = event:getProperty(hs.eventtap.event.properties.mouseEventDeltaY)
+
+    if self:isMoving() then
+      local current = self.windowCanvas:topLeft()
+
+      local newX = current.x + dx
+      local newY = current.y + dy
+
+      if not self.dragging then
+        if self.mouseActivationThreshold == 0 then
+          self.dragging = true
+          self.windowCanvas:show()
+        else
+          local target = self.targetWindow:topLeft()
+          local delta = math.max(math.abs(target.x - newX), math.abs(target.y - newY))
+          if delta > self.mouseActivationThreshold then
+            self.dragging = true
+            self.windowCanvas:show()
+          end
+        end
+      end
+
+      self.windowCanvas:topLeft({
+        x = newX,
+        y = newY,
+      })
+
+      return true
+    elseif self:isResizing() then
+      local currentSize = self.windowCanvas:size()
+
+      local newW = currentSize.w + dx
+      local newH = currentSize.h + dy
+
+      if not self.dragging then
+        if self.mouseActivationThreshold == 0 then
+          self.dragging = true
+          self.windowCanvas:show()
+        else
+          local target = self.targetWindow:size()
+          local delta = math.max(math.abs(target.w - newW), math.abs(target.h - newH))
+          if delta > self.mouseActivationThreshold then
+            self.dragging = true
+            self.windowCanvas:show()
+          end
+        end
+      end
+
+      self.windowCanvas:size({
+        w = newW,
+        h = newH,
+      })
+
+      return true
     else
-      self:moveWindowToCanvas()
+      return nil
     end
-
-    self:stop()
   end
 end
 
@@ -221,13 +313,14 @@ end
 
 function SkyRocket:handleClick()
   return function(event)
+    if self.enableWithoutClick then return nil end
     if self.dragging then return true end
+    if not (self:isMoving() or self:isResizing()) then return nil end
 
-    local flags = event:getFlags()
     local eventType = event:getType()
 
-    local isMoving = eventType == self.moveStartMouseEvent and flags:containExactly(self.moveModifiers)
-    local isResizing = eventType == self.resizeStartMouseEvent and flags:containExactly(self.resizeModifiers)
+    local isMoving = eventType == self.moveStartMouseEvent
+    local isResizing = eventType == self.resizeStartMouseEvent
 
     if isMoving or isResizing then
       local currentWindow = getWindowUnderMouse()
@@ -238,12 +331,6 @@ function SkyRocket:handleClick()
 
       self.dragging = true
       self.targetWindow = currentWindow
-
-      if isMoving then
-        self.dragType = dragTypes.move
-      else
-        self.dragType = dragTypes.resize
-      end
 
       self:resizeCanvasToWindow()
       self.windowCanvas:show()
@@ -257,6 +344,44 @@ function SkyRocket:handleClick()
     else
       return nil
     end
+  end
+end
+
+function SkyRocket:handleFlags()
+  return function(event)
+    local flags = event:getFlags()
+
+    local isMoving = flags:containExactly(self.moveModifiers)
+    local isResizing = flags:containExactly(self.resizeModifiers)
+
+    if isMoving or isResizing then
+      if isMoving then
+        self.dragType = dragTypes.move
+      else
+        self.dragType = dragTypes.resize
+      end
+
+      if self.enableWithoutClick then
+        local currentWindow = getWindowUnderMouse()
+
+        if self.disabledApps[currentWindow:application():name()] then
+          return nil
+        end
+
+        self.canDrag = true
+        self.targetWindow = currentWindow
+
+        self:resizeCanvasToWindow()
+        self.mouseMoveHandler:start()
+      end
+    else
+      self.canDrag = false
+      if self.enableWithoutClick then
+        self:cancel()
+      end
+    end
+
+    return nil
   end
 end
 
