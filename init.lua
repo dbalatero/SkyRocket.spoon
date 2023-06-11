@@ -89,6 +89,7 @@ function SkyRocket:new(options)
     resizeStartMouseEvent = buttonNameToEventType(options.resizeMouseButton or 'left', 'resizeMouseButton'),
     resizeModifiers = options.resizeModifiers or {'ctrl', 'shift'},
     targetWindow = nil,
+    closestCorner = nil, -- 'TopLeft', 'TopRight', 'BottomLeft', 'BottomRight'
   }
 
   setmetatable(resizer, self)
@@ -141,6 +142,10 @@ function SkyRocket:isMoving()
   return self.dragType == dragTypes.move
 end
 
+function SkyRocket:closestCorner()
+  return self.closestCorner
+end
+
 function SkyRocket:handleDrag()
   return function(event)
     if not self.dragging then return nil end
@@ -158,13 +163,46 @@ function SkyRocket:handleDrag()
 
       return true
     elseif self:isResizing() then
+      local current = self.windowCanvas:topLeft()
       local currentSize = self.windowCanvas:size()
 
-      self.windowCanvas:size({
-        w = currentSize.w + dx,
-        h = currentSize.h + dy
-      })
-
+      if self.closestCorner == 'BottomRight' then
+        -- only size changes
+        self.windowCanvas:size({
+          w = currentSize.w + dx,
+          h = currentSize.h + dy
+        })
+      elseif self.closestCorner == 'TopLeft' then
+        -- size and position both change
+        self.windowCanvas:topLeft({
+          x = current.x + dx,
+          y = current.y + dy,
+        })
+        self.windowCanvas:size({
+          w = currentSize.w - dx,
+          h = currentSize.h - dy
+        })
+      elseif self.closestCorner == 'BottomLeft' then
+        -- size and top-x change
+        self.windowCanvas:topLeft({
+          x = current.x + dx,
+          y = current.y,
+        })
+        self.windowCanvas:size({
+          w = currentSize.w - dx,
+          h = currentSize.h + dy
+        })
+      elseif self.closestCorner == 'TopRight' then
+        -- size and top-y change
+        self.windowCanvas:topLeft({
+          x = current.x,
+          y = current.y + dy,
+        })
+        self.windowCanvas:size({
+          w = currentSize.w + dx,
+          h = currentSize.h - dy
+        })
+      end
       return true
     else
       return nil
@@ -176,11 +214,8 @@ function SkyRocket:handleCancel()
   return function()
     if not self.dragging then return end
 
-    if self:isResizing() then
-      self:resizeWindowToCanvas()
-    else
-      self:moveWindowToCanvas()
-    end
+    self:moveWindowToCanvas()
+    self:resizeWindowToCanvas()
 
     self:stop()
   end
@@ -231,6 +266,20 @@ function SkyRocket:handleClick()
 
     if isMoving or isResizing then
       local currentWindow = getWindowUnderMouse()
+
+      local f = currentWindow:frame()
+      local m = hs.mouse.getAbsolutePosition()
+      local cx = (f.x1+f.x2) / 2
+      local cy = (f.y1+f.y2) / 2
+      if m.x > cx and m.y > cy then
+        self.closestCorner = 'BottomRight'
+      elseif m.x < cx and m.y < cy then
+        self.closestCorner = 'TopLeft'
+      elseif m.x < cx and m.y > cy then
+        self.closestCorner = 'BottomLeft'
+      elseif m.x > cx and m.y < cy then
+        self.closestCorner = 'TopRight'
+      end
 
       if self.disabledApps[currentWindow:application():name()] then
         return nil
