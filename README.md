@@ -45,6 +45,9 @@ sky = SkyRocket:new({
 
   -- Which mouse button to hold to resize a window?
   resizeMouseButton = 'left',
+
+  -- Should the current window be focused & brought to the front when you click on it?
+  enableSelection = false,
 })
 ```
 
