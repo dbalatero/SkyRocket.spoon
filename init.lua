@@ -36,7 +36,7 @@ local function createResizeCanvas(alpha)
       action = 'fill',
       type = 'rectangle',
       fillColor = { red = 0, green = 0, blue = 0, alpha = alpha },
-      roundedRectRadii = { xRadius = 5.0, yRadius = 5.0 },
+      roundedRectRadii = { xRadius = 8.0, yRadius = 8.0 },
     },
     1
   )
@@ -158,12 +158,22 @@ function SkyRocket:handleDrag()
 
       return true
     elseif self:isResizing() then
+      local current = self.windowCanvas:topLeft()
       local currentSize = self.windowCanvas:size()
 
-      self.windowCanvas:size({
-        w = currentSize.w + dx,
-        h = currentSize.h + dy
-      })
+      -- Adjust resizing logic based on start quadrant
+      if self.startQuadrant == "topLeft" then
+        self.windowCanvas:topLeft({ x = current.x + dx, y = current.y + dy })
+        self.windowCanvas:size({ w = currentSize.w - dx, h = currentSize.h - dy })
+      elseif self.startQuadrant == "topRight" then
+        self.windowCanvas:topLeft({ x = current.x, y = current.y + dy })
+        self.windowCanvas:size({ w = currentSize.w + dx, h = currentSize.h - dy })
+      elseif self.startQuadrant == "bottomLeft" then
+        self.windowCanvas:topLeft({ x = current.x + dx, y = current.y })
+        self.windowCanvas:size({ w = currentSize.w - dx, h = currentSize.h + dy })
+      elseif self.startQuadrant == "bottomRight" then
+        self.windowCanvas:size({ w = currentSize.w + dx, h = currentSize.h + dy })
+      end
 
       return true
     else
@@ -176,11 +186,7 @@ function SkyRocket:handleCancel()
   return function()
     if not self.dragging then return end
 
-    if self:isResizing() then
-      self:resizeWindowToCanvas()
-    else
-      self:moveWindowToCanvas()
-    end
+    self:moveWindowToCanvas()
 
     self:stop()
   end
@@ -200,6 +206,8 @@ function SkyRocket:resizeWindowToCanvas()
 
   local size = self.windowCanvas:size()
   self.targetWindow:setSize(size.w, size.h)
+
+  local point = self.windowCanvas:topLeft()
 end
 
 function SkyRocket:moveWindowToCanvas()
@@ -217,6 +225,21 @@ function SkyRocket:moveWindowToCanvas()
   }
 
   self.targetWindow:move(hs.geometry.new(moveTo), nil, false, 0)
+end
+
+function SkyRocket:determineQuadrant(windowFrame, mousePos)
+  local centerX = windowFrame.x + windowFrame.w / 2
+  local centerY = windowFrame.y + windowFrame.h / 2
+
+  if mousePos.x < centerX and mousePos.y < centerY then
+    return "topLeft"
+  elseif mousePos.x >= centerX and mousePos.y < centerY then
+    return "topRight"
+  elseif mousePos.x < centerX and mousePos.y >= centerY then
+    return "bottomLeft"
+  else
+    return "bottomRight"
+  end
 end
 
 function SkyRocket:handleClick()
@@ -243,6 +266,10 @@ function SkyRocket:handleClick()
         self.dragType = dragTypes.move
       else
         self.dragType = dragTypes.resize
+        -- Determine initial quadrant
+        local windowFrame = currentWindow:frame()
+        local mousePos = hs.mouse.absolutePosition()
+        self.startQuadrant = self:determineQuadrant(windowFrame, mousePos)
       end
 
       self:resizeCanvasToWindow()
