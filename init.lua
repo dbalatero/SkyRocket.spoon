@@ -64,6 +64,7 @@ end
 --     moveMouseButton = 'left',
 --     resizeModifiers = {'ctrl', 'shift'}
 --     resizeMouseButton = 'left',
+--     focusWindowOnClick = false,
 --   })
 --
 local function buttonNameToEventType(name, optionName)
@@ -89,6 +90,7 @@ function SkyRocket:new(options)
     resizeStartMouseEvent = buttonNameToEventType(options.resizeMouseButton or 'left', 'resizeMouseButton'),
     resizeModifiers = options.resizeModifiers or {'ctrl', 'shift'},
     targetWindow = nil,
+    focusWindowOnClick = options.focusWindowOnClick or false,
   }
 
   setmetatable(resizer, self)
@@ -252,7 +254,9 @@ function SkyRocket:handleClick()
       self.dragHandler:start()
       self.clickHandler:stop()
 
-      -- Prevent selection
+      if focusWindowOnClick then
+        currentWindow:focus()
+      end
       return true
     else
       return nil
